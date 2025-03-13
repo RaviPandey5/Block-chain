@@ -8,7 +8,7 @@
   to = "/index.html"
   status = 200
 
-# Add security headers
+# Add security headers with more permissive CSP
 [[headers]]
   for = "/*"
   [headers.values]
@@ -16,7 +16,8 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://crbtcmtikdjolukveauy.supabase.co https://*.alchemyapi.io wss://*.alchemyapi.io https://*.infura.io wss://*.infura.io https://*.etherscan.io https://api.gemini.google.com; img-src 'self' data: https://raw.githubusercontent.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self' https://verify.walletconnect.org;"
+    # More permissive CSP for blockchain apps
+    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://*.infura.io wss://*.infura.io https://*.alchemyapi.io wss://*.alchemyapi.io https://*.etherscan.io https://ethereum.publicnode.com wss://*.bridge.walletconnect.org https://*.supabase.co https://api.gemini.google.com https://sepolia.infura.io wss://sepolia.infura.io ws://localhost:* https://api.blocknative.com; img-src 'self' data: https://raw.githubusercontent.com https://*.walletconnect.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self' https://verify.walletconnect.org https://*.walletconnect.com; worker-src 'self' blob:;"
 
 # Cache static assets
 [[headers]]

@@ -2,12 +2,82 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <meta name="description" content="Secure blockchain-based voting platform with Aadhaar verification" />
+    <meta name="theme-color" content="#6b21a8" />
+    <title>Secure Voting Platform | Blockchain & Aadhaar</title>
+    <!-- Preconnect to speed up API connections -->
+    <link rel="preconnect" href="https://crbtcmtikdjolukveauy.supabase.co">
+    <link rel="preconnect" href="https://sepolia.infura.io">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Error handling for white screen -->
+    <script>
+      // Check if the app mounted properly after 3 seconds
+      setTimeout(() => {
+        const rootElement = document.getElementById('root');
+        
+        // If root is empty or only contains a few elements, app didn't load properly
+        if (!rootElement || rootElement.children.length === 0 || 
+            (rootElement.children.length === 1 && rootElement.children[0].tagName === 'DIV' && !rootElement.children[0].children.length)) {
+          
+          console.error('Application failed to load properly');
+          
+          // Create error message for user
+          const errorDiv = document.createElement('div');
+          errorDiv.style.padding = '20px';
+          errorDiv.style.maxWidth = '600px';
+          errorDiv.style.margin = '40px auto';
+          errorDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+          errorDiv.style.borderRadius = '8px';
+          errorDiv.style.backdropFilter = 'blur(10px)';
+          errorDiv.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+          errorDiv.style.color = 'white';
+          errorDiv.style.fontFamily = 'system-ui, sans-serif';
+          
+          errorDiv.innerHTML = `
+            <h2 style="color: #f43f5e; margin-top: 0;">Application Error</h2>
+            <p>Sorry, the application failed to load properly. This could be due to:</p>
+            <ul style="margin-bottom: 20px;">
+              <li>Network connectivity issues</li>
+              <li>Browser compatibility problems</li>
+              <li>Missing blockchain connection</li>
+            </ul>
+            <p>Please try the following:</p>
+            <ol>
+              <li>Refresh the page</li>
+              <li>Clear your browser cache</li>
+              <li>Make sure you have a wallet extension installed (like MetaMask)</li>
+              <li>Check the console for specific error messages</li>
+            </ol>
+            <div style="margin-top: 20px;">
+              <button onclick="window.location.reload()" style="background: linear-gradient(to right, #6d28d9, #8b5cf6); border: none; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                Refresh Page
+              </button>
+            </div>
+          `;
+          
+          // Add error message to page if root is empty
+          if (rootElement.children.length === 0) {
+            rootElement.appendChild(errorDiv);
+          } else {
+            // Replace content if there's just an empty div
+            document.body.innerHTML = '';
+            document.body.appendChild(errorDiv);
+          }
+        }
+      }, 3000);
+      
+      // Log environment variable availability (without exposing values)
+      console.log('Environment variables check:', {
+        ALCHEMY_API_KEY: !!import.meta.env.VITE_ALCHEMY_API_KEY,
+        CONTRACT_ADDRESS: !!import.meta.env.VITE_CONTRACT_ADDRESS,
+        SUPABASE_URL: !!import.meta.env.VITE_SUPABASE_URL,
+        SUPABASE_ANON_KEY: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+      });
+    </script>
   </body>
 </html>

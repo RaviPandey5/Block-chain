@@ -10,10 +10,6 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
-  define: {
-    'process.env.VITE_ALCHEMY_API_KEY': JSON.stringify(process.env.VITE_ALCHEMY_API_KEY),
-    'process.env.VITE_CONTRACT_ADDRESS': JSON.stringify(process.env.VITE_CONTRACT_ADDRESS),
-  },
   optimizeDeps: {
     esbuildOptions: {
       target: 'es2020',
@@ -22,8 +18,33 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
+    sourcemap: true,
     rollupOptions: {
-      external: ['ethers'],
+      output: {
+        manualChunks: {
+          vendor: [
+            'react', 
+            'react-dom', 
+            'react-router-dom', 
+            'ethers', 
+            '@tanstack/react-query'
+          ],
+          ui: [
+            'lucide-react',
+            'clsx',
+            'tailwind-merge'
+          ],
+        },
+      },
     },
+    chunkSizeWarningLimit: 1000,
+  },
+  server: {
+    port: 3000,
+    strictPort: false,
+  },
+  preview: {
+    port: 4173,
+    strictPort: false,
   },
 });
