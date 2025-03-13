@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --purple-500: rgb(168, 85, 247);
+  --sky-500: rgb(14, 165, 233);
+  --button-gradient-from: rgba(147, 51, 234, 0.9);
+  --button-gradient-to: rgba(79, 70, 229, 0.9);
+  --button-hover-from: rgb(147, 51, 234);
+  --button-hover-to: rgb(79, 70, 229);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+/* Gradient heading styles */
+.gradient-heading {
+  @apply bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.gradient-heading::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  filter: blur(8px);
+  opacity: 0.5;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(147, 51, 234, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(147, 51, 234, 0.7);
+}
