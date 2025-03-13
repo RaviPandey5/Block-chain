@@ -1,6 +1,6 @@
 import React from 'react';
 import { Vote, Shield, Users, BarChart2, ChevronRight } from 'lucide-react';
-import { useHomeData } from '../hooks/useHomeData';
+import { useHomeData } from '../components/HomeDataProvider';
 import { useAccount } from 'wagmi';
 
 interface HeroProps {
@@ -8,8 +8,13 @@ interface HeroProps {
 }
 
 const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
-  const { stats, loading } = useHomeData();
+  // Get data directly from our HomeDataProvider
+  const homeData = useHomeData();
   const { isConnected } = useAccount();
+  
+  // Use all the stats directly from homeData - no need for conversion now
+  const stats = homeData;
+  const loading = homeData.loading;
 
   return (
     <div className="min-h-screen p-6 lg:p-12">

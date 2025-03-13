@@ -8,6 +8,8 @@ import { WagmiConfig } from 'wagmi';
 import { useAccount } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from './lib/wagmi';
+import { HomeDataProvider } from './components/HomeDataProvider';
+import { useAuth } from './hooks/useAuth';
 
 // Components
 import Hero from './components/Hero';
@@ -174,7 +176,9 @@ function App() {
   return (
     <WagmiConfig config={config}>
       <QueryClientProvider client={queryClient}>
-        <AppContent />
+        <HomeDataProvider>
+          <AppContent />
+        </HomeDataProvider>
       </QueryClientProvider>
     </WagmiConfig>
   );
