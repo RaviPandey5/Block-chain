@@ -126,25 +126,20 @@ function AppContent() {
           transition-all duration-300 ease-in-out z-40
           ${isMobileMenuOpen 
             ? 'w-64 translate-x-0' 
-            : 'w-0 -translate-x-full lg:w-16 lg:translate-x-0'
+            : 'w-0 -translate-x-full lg:w-16 lg:translate-x-0 lg:hover:w-64'
           }
-          group
+          group overflow-hidden
         `}
       >
         {/* Logo and Navigation Container */}
         <div className={`
-          h-full flex flex-col
-          ${isMobileMenuOpen ? 'w-64' : 'w-0 lg:w-64'}
+          h-full flex flex-col min-w-[64px]
+          ${isMobileMenuOpen ? 'w-64' : 'w-16 lg:group-hover:w-64'}
+          transition-all duration-300
         `}>
           {/* Logo */}
-          <div className={`
-            h-16 border-b border-white/10 flex items-center px-4
-            ${!isMobileMenuOpen && 'lg:px-4'}
-          `}>
-            <div className={`
-              flex items-center gap-3
-              ${!isMobileMenuOpen && 'lg:min-w-[48px]'}
-            `}>
+          <div className="h-16 border-b border-white/10 flex items-center px-4">
+            <div className="flex items-center gap-3">
               <Vote className={`
                 w-6 h-6 text-purple-400
                 ${!isMobileMenuOpen && 'hidden lg:block'}
@@ -168,7 +163,7 @@ function AppContent() {
           </div>
 
           {/* Nav Items */}
-          <div className="py-4 overflow-hidden">
+          <div className="py-4">
             {navItems.map((item) => (
               <button
                 key={item.id}
