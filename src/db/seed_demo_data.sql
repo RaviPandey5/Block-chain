@@ -6,6 +6,10 @@ DELETE FROM discussion_reactions;
 DELETE FROM discussion_comments;
 DELETE FROM discussions;
 DELETE FROM reputation_history;
+DELETE FROM anonymous_votes;
+DELETE FROM poll_discussions;
+DELETE FROM poll_options;
+DELETE FROM e_voting_polls;
 DELETE FROM community_users;
 
 -- Insert demo users with different wallet addresses (use actual connected wallet at the end)
@@ -15,7 +19,8 @@ VALUES
     ('0x70997970c51812dc3a010c7d01b50e0d17dc79c8', 'Bob_Builder', 75.25, NOW(), NOW(), true),
     ('0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc', 'Charlie_Voter', 30.00, NOW(), NOW(), true),
     ('0x90f79bf6eb2c4f870365e785982e1f101e93b906', 'Diana_Tech', 200.75, NOW(), NOW(), true),
-    ('0x15d34aaf54267db7d7c367839aaf71a00a2c6a65', 'Evan_Crypto', 45.50, NOW(), NOW(), true);
+    ('0x15d34aaf54267db7d7c367839aaf71a00a2c6a65', 'Evan_Crypto', 45.50, NOW(), NOW(), true),
+    ('0x742d35Cc6634C0532925a3b844Bc454e4438f44e', 'Poll_Creator', 100.00, NOW(), NOW(), true);
 
 -- Insert demo discussions
 INSERT INTO discussions (id, title, content, author_address, created_at, updated_at, views, is_featured, status)
@@ -135,6 +140,56 @@ VALUES
     (uuid_generate_v4(), 'Implement token-weighted voting', 'I propose we implement a token-weighted voting system to allow users to have voting power proportional to their token holdings.', '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266', 'active', NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day'),
     (uuid_generate_v4(), 'Community rewards program', 'Let''s establish a community rewards program to incentivize participation in governance activities.', '0x70997970c51812dc3a010c7d01b50e0d17dc79c8', 'draft', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days');
 
+-- Insert demo e-voting polls
+INSERT INTO e_voting_polls (id, title, description, creator_address, start_time, end_time, status, total_votes)
+VALUES
+  ('550e8400-e29b-41d4-a716-446655440000', 'Community Governance Proposal #1', 'Should we implement a new reward system for active contributors?', '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', NOW(), NOW() + INTERVAL '7 days', 'active', 0),
+  ('550e8400-e29b-41d4-a716-446655440001', 'Technical Upgrade Vote', 'Vote on the proposed technical upgrades for Q2 2024', '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', NOW() - INTERVAL '1 day', NOW() + INTERVAL '6 days', 'active', 0),
+  ('550e8400-e29b-41d4-a716-446655440002', 'Community Event Planning', 'Choose the theme for our next community event', '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', NOW() - INTERVAL '2 days', NOW() + INTERVAL '5 days', 'active', 0);
+
+-- Insert poll options
+INSERT INTO poll_options (poll_id, option_text, vote_count)
+VALUES
+  ('550e8400-e29b-41d4-a716-446655440000', 'Yes, implement new reward system', 0),
+  ('550e8400-e29b-41d4-a716-446655440000', 'No, keep current system', 0),
+  ('550e8400-e29b-41d4-a716-446655440000', 'Yes, but with modifications', 0),
+  
+  ('550e8400-e29b-41d4-a716-446655440001', 'Implement all proposed upgrades', 0),
+  ('550e8400-e29b-41d4-a716-446655440001', 'Implement critical upgrades only', 0),
+  ('550e8400-e29b-41d4-a716-446655440001', 'Postpone upgrades to Q3', 0),
+  
+  ('550e8400-e29b-41d4-a716-446655440002', 'Technical Workshop', 0),
+  ('550e8400-e29b-41d4-a716-446655440002', 'Community Meetup', 0),
+  ('550e8400-e29b-41d4-a716-446655440002', 'Hackathon', 0);
+
+-- Insert anonymous votes (using hashed addresses)
+INSERT INTO anonymous_votes (poll_id, option_id, voter_hash)
+SELECT
+  '550e8400-e29b-41d4-a716-446655440000',
+  (SELECT id FROM poll_options WHERE poll_id = '550e8400-e29b-41d4-a716-446655440000' LIMIT 1),
+  encode(sha256(('0x' || substr(md5(random()::text), 1, 40))::bytea), 'hex');
+
+-- Insert demo poll discussions
+INSERT INTO poll_discussions (poll_id, content, author_hash, created_at)
+VALUES
+  ('550e8400-e29b-41d4-a716-446655440000', 'I think the new reward system would incentivize more participation.', encode(sha256('anonymous1'::bytea), 'hex'), NOW() - INTERVAL '1 hour'),
+  ('550e8400-e29b-41d4-a716-446655440000', 'We should carefully consider the impact on smaller contributors.', encode(sha256('anonymous2'::bytea), 'hex'), NOW() - INTERVAL '30 minutes'),
+  ('550e8400-e29b-41d4-a716-446655440001', 'The technical upgrades seem essential for our growth.', encode(sha256('anonymous3'::bytea), 'hex'), NOW() - INTERVAL '2 hours'),
+  ('550e8400-e29b-41d4-a716-446655440002', 'A hackathon would be great for building our community!', encode(sha256('anonymous4'::bytea), 'hex'), NOW() - INTERVAL '1 day');
+
+-- Update vote counts
+UPDATE poll_options
+SET vote_count = vote_count + 1
+WHERE id IN (
+  SELECT option_id
+  FROM anonymous_votes
+  WHERE poll_id = '550e8400-e29b-41d4-a716-446655440000'
+);
+
+UPDATE e_voting_polls
+SET total_votes = total_votes + 1
+WHERE id = '550e8400-e29b-41d4-a716-446655440000';
+
 -- Verification queries
 SELECT 'community_users' as table_name, COUNT(*) as count FROM community_users
 UNION ALL
@@ -146,4 +201,12 @@ SELECT 'discussion_reactions' as table_name, COUNT(*) as count FROM discussion_r
 UNION ALL
 SELECT 'reputation_history' as table_name, COUNT(*) as count FROM reputation_history
 UNION ALL
-SELECT 'proposals' as table_name, COUNT(*) as count FROM proposals; 
+SELECT 'proposals' as table_name, COUNT(*) as count FROM proposals
+UNION ALL
+SELECT 'e_voting_polls' as table_name, COUNT(*) as count FROM e_voting_polls
+UNION ALL
+SELECT 'poll_options' as table_name, COUNT(*) as count FROM poll_options
+UNION ALL
+SELECT 'anonymous_votes' as table_name, COUNT(*) as count FROM anonymous_votes
+UNION ALL
+SELECT 'poll_discussions' as table_name, COUNT(*) as count FROM poll_discussions; 

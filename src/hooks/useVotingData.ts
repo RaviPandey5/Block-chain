@@ -231,8 +231,8 @@ export function useVotingData(refreshInterval = 1000) {
       
       // Get the current block number
       const currentBlock = await provider.getBlockNumber();
-      // Look back 10000 blocks to ensure we catch recent votes
-      const fromBlock = Math.max(0, currentBlock - 10000);
+      // Look back 1000 blocks to ensure we catch recent votes while being efficient
+      const fromBlock = Math.max(0, currentBlock - 1000);
       
       console.log('Fetching vote events from block:', fromBlock, 'to', currentBlock);
 
@@ -240,11 +240,12 @@ export function useVotingData(refreshInterval = 1000) {
       const voteFilter = contract.filters.VoteCast();
       const voteEvents = await contract.queryFilter(voteFilter, fromBlock, currentBlock);
       
-      // Process vote events
+      // Process vote events with block data
       const processedVotes = await Promise.all(
         voteEvents.map(async (event) => {
           try {
-            const block = await event.getBlock();
+            // Get block data for timestamp
+            const block = await provider.getBlock(event.blockNumber);
             const voter = event.args?.[0];
             const candidateId = event.args?.[1];
 
@@ -257,7 +258,7 @@ export function useVotingData(refreshInterval = 1000) {
               voter: voter.toLowerCase(),
               candidateId: candidateId.toNumber(),
               timestamp: block.timestamp,
-              blockNumber: block.number
+              blockNumber: event.blockNumber
             };
           } catch (error) {
             console.error('Error processing vote event:', error);
@@ -290,48 +291,75 @@ export function useVotingData(refreshInterval = 1000) {
     let contract: ethers.Contract;
     try {
       contract = getContract();
+      const provider = getProvider();
+
+      const handleVoteEvent = async (voter: string, candidateId: ethers.BigNumber, event: any) => {
+        try {
+          console.log('Vote event received:', { voter, candidateId: candidateId.toNumber() });
+          
+          // Get block data for the new vote
+          const block = await provider.getBlock(event.blockNumber);
+          if (!block) {
+            console.warn('Block not found for vote event');
+            return;
+          }
+
+          const newVote: VoteData = {
+            candidateId: candidateId.toNumber(),
+            voter: voter.toLowerCase(),
+            timestamp: block.timestamp,
+            blockNumber: event.blockNumber
+          };
+
+          // Update the voting data with the new vote
+          queryClient.setQueryData<VotingDataResponse | undefined>(
+            VOTING_DATA_KEY,
+            (oldData) => {
+              if (!oldData) return undefined;
+
+              // Update total votes
+              const totalVotes = oldData.votingStats.totalVotes + 1;
+              
+              // Update recent votes (keep last 5)
+              const recentVotes = [newVote, ...oldData.votingStats.recentVotes].slice(0, 5);
+
+              // Update participation rate
+              const participationRate = oldData.votingStats.verifiedUsers > 0
+                ? (totalVotes / oldData.votingStats.verifiedUsers) * 100
+                : 0;
+
+              return {
+                ...oldData,
+                votingStats: {
+                  ...oldData.votingStats,
+                  totalVotes,
+                  participationRate,
+                  lastVote: newVote,
+                  recentVotes
+                }
+              };
+            }
+          );
+
+          // Refresh the candidates data to update vote counts
+          queryClient.invalidateQueries({ queryKey: VOTING_DATA_KEY });
+        } catch (err) {
+          console.error('Error handling vote event:', err);
+        }
+      };
+
+      // Set up event listener
+      const voteFilter = contract.filters.VoteCast();
+      contract.on(voteFilter, handleVoteEvent);
+
+      return () => {
+        contract.off(voteFilter, handleVoteEvent);
+      };
     } catch (err) {
       console.error('Failed to set up event listener:', err);
       return;
     }
-
-    const handleVoteEvent = async (voter: string, candidateId: ethers.BigNumber, event: any) => {
-      try {
-        console.log('Vote event received:', { voter, candidateId: candidateId.toNumber() });
-        
-        const block = await event.getBlock();
-        const newVote: VoteData = {
-          candidateId: candidateId.toNumber(),
-          voter,
-          timestamp: block.timestamp,
-          blockNumber: block.number
-        };
-
-        queryClient.setQueryData(VOTING_DATA_KEY, (prevData: any) => {
-          const recentVotes = [newVote, ...prevData.votingStats.recentVotes].slice(0, 4);
-          return {
-            ...prevData,
-            votingStats: {
-              ...prevData.votingStats,
-              lastVote: newVote,
-              recentVotes
-            }
-          };
-        });
-
-        // Refresh the candidates data to update vote counts
-        queryClient.invalidateQueries({ queryKey: VOTING_DATA_KEY });
-      } catch (err) {
-        console.error('Error handling vote event:', err);
-      }
-    };
-
-    contract.on('VoteCast', handleVoteEvent);
-
-    return () => {
-      contract.off('VoteCast', handleVoteEvent);
-    };
-  }, [chain, isConnected, queryClient]);
+  }, [chain, isConnected, queryClient, getContract, getProvider]);
 
   return {
     candidates: votingData?.candidates || [],

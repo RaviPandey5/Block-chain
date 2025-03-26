@@ -31,6 +31,7 @@ export const SparklesCore = (props: ParticlesProps) => {
     particleDensity,
   } = props;
   const [init, setInit] = useState(false);
+  
   useEffect(() => {
     initParticlesEngine(async (engine) => {
       await loadSlim(engine);
@@ -38,6 +39,7 @@ export const SparklesCore = (props: ParticlesProps) => {
       setInit(true);
     });
   }, []);
+  
   const controls = useAnimation();
 
   const particlesLoaded = async (container?: Container) => {
@@ -123,6 +125,9 @@ export const SparklesCore = (props: ParticlesProps) => {
                   height: 1080,
                 },
                 value: particleDensity || 100,
+                limit: {
+                  value: 120
+                },
               },
               opacity: {
                 value: 0.9,

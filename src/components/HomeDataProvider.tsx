@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useElectionContract } from '../hooks/useElectionContract';
+import { useAccount } from 'wagmi';
+import { ethers } from 'ethers';
 
 // Define the types for our home data
 interface HomeData {
@@ -33,60 +36,21 @@ interface Candidate {
   voteCount: number;
 }
 
-// Create default/fallback data
+// Create default/fallback data with zeros instead of mock data
 const defaultHomeData: HomeData = {
   discussionsCount: 0,
   membersCount: 0,
   contributorsCount: 0,
   proposalsCount: 0,
-  candidates: [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      party: "Progressive Alliance",
-      description: "Experienced leader focused on sustainable development",
-      voteCount: 245
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      party: "Innovation Party",
-      description: "Tech entrepreneur advocating for digital transformation",
-      voteCount: 189
-    },
-    {
-      id: 3,
-      name: "Emily Rodriguez",
-      party: "Unity Coalition",
-      description: "Community organizer committed to inclusive policies",
-      voteCount: 217
-    }
-  ],
-  // Hero component defaults
-  totalVotes: 651, // Sum of default candidate votes
-  totalCandidates: 3,
-  verifiedUsers: 1000,
-  recentTransactions: 120,
-  participationRate: 65.1,
+  candidates: [],
+  totalVotes: 0,
+  totalCandidates: 0,
+  verifiedUsers: 0,
+  recentTransactions: 0,
+  participationRate: 0,
   securityScore: 100,
-  lastVote: { timestamp: Math.floor(Date.now() / 1000) - 300 }, // 5 minutes ago
-  recentVotes: [
-    {
-      voter: "0x1234567890abcdef1234567890abcdef12345678",
-      timestamp: Math.floor(Date.now() / 1000) - 300,
-      candidateId: 1
-    },
-    {
-      voter: "0xabcdef1234567890abcdef1234567890abcdef12",
-      timestamp: Math.floor(Date.now() / 1000) - 600,
-      candidateId: 3
-    },
-    {
-      voter: "0x7890abcdef1234567890abcdef1234567890abcd",
-      timestamp: Math.floor(Date.now() / 1000) - 900,
-      candidateId: 2
-    }
-  ],
+  lastVote: null,
+  recentVotes: [],
   loading: true,
   error: null
 };
@@ -100,146 +64,191 @@ export const useHomeData = () => useContext(HomeDataContext);
 // The provider component
 export const HomeDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [data, setData] = useState<HomeData>(defaultHomeData);
+  const { getContract } = useElectionContract();
+  const { address } = useAccount();
 
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        // Fetch discussions count
-        const { count: discussionsCount, error: discussionsError } = await supabase
-          .from('discussions')
-          .select('*', { count: 'exact', head: true });
+        setData(prev => ({ ...prev, loading: true, error: null }));
 
-        if (discussionsError) {
-          console.error('Error fetching discussions count:', discussionsError);
+        // Get contract instance
+        const contract = getContract();
+        if (!contract) {
+          throw new Error('Contract not initialized');
         }
 
-        // Fetch community users count
-        const { count: membersCount, error: membersError } = await supabase
-          .from('community_users')
-          .select('*', { count: 'exact', head: true });
+        // Fetch blockchain data first
+        let candidates: Candidate[] = [];
+        let totalVotes = 0;
+        let verifiedUsers = 0;
+        let recentVotes: Array<{ voter: string; timestamp: number; candidateId: number }> = [];
+        let lastVote: { timestamp: number } | null = null;
 
-        if (membersError) {
-          console.error('Error fetching members count:', membersError);
-        }
+        try {
+          // Fetch candidates from blockchain
+          candidates = await contract.getCandidates();
+          candidates = candidates.map((candidate: any) => ({
+            id: candidate.id.toNumber(),
+            name: candidate.name,
+            party: candidate.party,
+            description: candidate.description,
+            voteCount: candidate.voteCount.toNumber()
+          }));
 
-        // Fetch contributors count (users with reputation > 0)
-        const { count: contributorsCount, error: contributorsError } = await supabase
-          .from('community_users')
-          .select('*', { count: 'exact', head: true })
-          .gt('reputation_score', 0);
+          // Calculate total votes from candidate data
+          totalVotes = candidates.reduce((sum, candidate) => sum + candidate.voteCount, 0);
 
-        if (contributorsError) {
-          console.error('Error fetching contributors count:', contributorsError);
-        }
+          // Get verified users count from contract events
+          const verifiedFilter = contract.filters.AadhaarVerified();
+          const verifiedEvents = await contract.queryFilter(verifiedFilter);
+          verifiedUsers = verifiedEvents.length;
 
-        // Fetch proposals count
-        const { count: proposalsCount, error: proposalsError } = await supabase
-          .from('proposals')
-          .select('*', { count: 'exact', head: true });
-
-        if (proposalsError) {
-          console.error('Error fetching proposals count:', proposalsError);
-        }
-
-        // Also fetch any candidates from database if available
-        // This is a fallback in case blockchain data isn't available
-        const { data: candidatesData, error: candidatesError } = await supabase
-          .from('candidates')
-          .select('*')
-          .order('vote_count', { ascending: false });
-
-        if (candidatesError) {
-          console.error('Error fetching candidates:', candidatesError);
-        }
-
-        // Map candidates to our format if available
-        const candidates = candidatesData ? candidatesData.map((candidate: any) => ({
-          id: candidate.id,
-          name: candidate.name,
-          party: candidate.party,
-          description: candidate.description,
-          voteCount: candidate.vote_count || 0
-        })) : defaultHomeData.candidates;
-
-        // Calculate totalVotes
-        const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.voteCount, 0);
-
-        // Fetch recent votes
-        const { data: recentVotesData, error: recentVotesError } = await supabase
-          .from('votes')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
-
-        // Format votes for display
-        const recentVotes = recentVotesData ? recentVotesData.map((vote: any) => ({
-          voter: vote.voter_address || "0x0000000000000000000000000000000000000000",
-          timestamp: Math.floor(new Date(vote.created_at).getTime() / 1000),
-          candidateId: vote.candidate_id
-        })) : defaultHomeData.recentVotes;
-
-        // Get the last vote timestamp
-        const lastVote = recentVotes.length > 0 
-          ? { timestamp: recentVotes[0].timestamp } 
-          : defaultHomeData.lastVote;
-
-        // Calculate participation rate
-        const participationRate = membersCount && membersCount > 0 
-          ? (totalVotes / membersCount) * 100 
-          : defaultHomeData.participationRate;
-
-        // Fetch recent transactions
-        const { count: recentTransactionsCount, error: transactionsError } = await supabase
-          .from('transactions')
-          .select('*', { count: 'exact', head: true });
+          // Fetch recent vote events from blockchain
+          const voteFilter = contract.filters.VoteCast();
+          const voteEvents = await contract.queryFilter(voteFilter);
           
-        if (transactionsError) {
-          console.error('Error fetching transactions count:', transactionsError);
+          // Get block timestamps for events
+          const processedVotes = await Promise.all(
+            voteEvents.map(async (event) => {
+              try {
+                const block = await event.getBlock();
+                const voter = event.args?.[0];
+                const candidateId = event.args?.[1];
+
+                if (!block || !voter || !candidateId) {
+                  console.warn('Invalid event data:', { block, voter, candidateId });
+                  return null;
+                }
+
+                return {
+                  voter: voter.toLowerCase(),
+                  candidateId: candidateId.toNumber(),
+                  timestamp: block.timestamp,
+                  blockNumber: block.number
+                };
+              } catch (error) {
+                console.error('Error processing vote event:', error);
+                return null;
+              }
+            })
+          );
+
+          // Filter out null values and sort by block number (descending)
+          const validVotes = processedVotes
+            .filter((vote): vote is NonNullable<typeof vote> => vote !== null)
+            .sort((a, b) => b.blockNumber - a.blockNumber);
+
+          // Get recent votes (last 5)
+          recentVotes = validVotes.slice(0, 5).map(vote => ({
+            voter: vote.voter,
+            timestamp: vote.timestamp,
+            candidateId: vote.candidateId
+          }));
+
+          // Set last vote if we have any votes
+          if (validVotes.length > 0) {
+            lastVote = { timestamp: validVotes[0].timestamp };
+          }
+
+          // Fetch transaction count (including votes and verifications)
+          const recentTransactions = voteEvents.length + verifiedEvents.length;
+
+          // Calculate participation rate
+          const participationRate = verifiedUsers > 0 
+            ? (totalVotes / verifiedUsers) * 100 
+            : 0;
+
+          // Update state with blockchain data
+          setData(prev => ({
+            ...prev,
+            candidates,
+            totalVotes,
+            totalCandidates: candidates.length,
+            verifiedUsers,
+            recentTransactions,
+            participationRate,
+            securityScore: 100,
+            lastVote,
+            recentVotes,
+            loading: false,
+            error: null
+          }));
+
+        } catch (error) {
+          console.error('Error fetching blockchain data:', error);
+          throw error;
         }
 
-        // Update state with all our data
-        setData({
-          discussionsCount: discussionsCount || 0,
-          membersCount: membersCount || 0,
-          contributorsCount: contributorsCount || 0,
-          proposalsCount: proposalsCount || 0,
-          candidates: candidates.length > 0 ? candidates : defaultHomeData.candidates,
-          totalVotes: totalVotes || defaultHomeData.totalVotes,
-          totalCandidates: candidates.length || defaultHomeData.totalCandidates,
-          verifiedUsers: membersCount || defaultHomeData.verifiedUsers,
-          recentTransactions: recentTransactionsCount || defaultHomeData.recentTransactions,
-          participationRate: participationRate || defaultHomeData.participationRate,
-          securityScore: 100, // Always 100 for now
-          lastVote: lastVote,
-          recentVotes: recentVotes,
-          loading: false,
-          error: null
-        });
+        // Fetch Supabase data for community stats
+        const [
+          discussionsResult,
+          membersResult,
+          contributorsResult,
+          proposalsResult,
+        ] = await Promise.all([
+          supabase.from('discussions').select('*', { count: 'exact', head: true }),
+          supabase.from('community_users').select('*', { count: 'exact', head: true }),
+          supabase.from('community_users')
+            .select('*', { count: 'exact', head: true })
+            .gt('reputation_score', 0),
+          supabase.from('proposals').select('*', { count: 'exact', head: true }),
+        ]);
+
+        // Update state with combined data
+        setData(prev => ({
+          ...prev,
+          discussionsCount: discussionsResult.count || 0,
+          membersCount: membersResult.count || 0,
+          contributorsCount: contributorsResult.count || 0,
+          proposalsCount: proposalsResult.count || 0,
+        }));
 
       } catch (error) {
         console.error('Error in fetchHomeData:', error);
-        setData({
-          ...defaultHomeData,
+        setData(prev => ({
+          ...prev,
           loading: false,
           error: 'Failed to load home data'
-        });
+        }));
       }
     };
 
+    // Initial fetch
     fetchHomeData();
 
-    // Set up real-time subscriptions for live updates
-    const discussionsSubscription = supabase
-      .channel('discussion-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'discussions' }, () => {
-        fetchHomeData();
-      })
-      .subscribe();
+    // Set up blockchain event listeners
+    const contract = getContract();
+    if (contract) {
+      const voteFilter = contract.filters.VoteCast();
+      const verificationFilter = contract.filters.AadhaarVerified();
 
-    return () => {
-      discussionsSubscription.unsubscribe();
-    };
-  }, []);
+      contract.on(voteFilter, () => fetchHomeData());
+      contract.on(verificationFilter, () => fetchHomeData());
+
+      // Set up Supabase subscriptions
+      const subscriptions = [
+        supabase.channel('discussions-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'discussions' }, fetchHomeData)
+          .subscribe(),
+        supabase.channel('users-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'community_users' }, fetchHomeData)
+          .subscribe(),
+        supabase.channel('proposals-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'proposals' }, fetchHomeData)
+          .subscribe()
+      ];
+
+      // Cleanup function
+      return () => {
+        contract.removeAllListeners(voteFilter);
+        contract.removeAllListeners(verificationFilter);
+        subscriptions.forEach(subscription => subscription.unsubscribe());
+      };
+    }
+
+    return undefined;
+  }, [getContract, address]);
 
   return (
     <HomeDataContext.Provider value={data}>
