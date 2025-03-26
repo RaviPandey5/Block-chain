@@ -113,59 +113,104 @@ function AppContent() {
 
       {/* Mobile Menu Button - only visible on mobile */}
       <button 
-        className="fixed top-4 left-4 z-50 p-2 rounded-full bg-purple-800/50 backdrop-blur-sm lg:hidden"
+        className="fixed top-4 right-4 z-50 p-3 rounded-lg bg-black/20 backdrop-blur-sm border border-white/10 lg:hidden hover:bg-white/5 transition-all"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       >
-        {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
       {/* Navigation Sidebar */}
       <nav 
         className={`
-          fixed top-0 left-0 h-full w-12 hover:w-48 bg-black/50 backdrop-blur-xl border-r border-white/10
-          transform transition-all duration-300 ease-in-out z-40
-          ${isMobileMenuOpen ? 'translate-x-0 w-48' : '-translate-x-0'}
-          lg:translate-x-0
+          fixed top-0 left-0 h-full bg-black/50 backdrop-blur-xl border-r border-white/10
+          transition-all duration-300 ease-in-out z-40
+          ${isMobileMenuOpen 
+            ? 'w-64 translate-x-0' 
+            : 'w-0 -translate-x-full lg:w-16 lg:translate-x-0'
+          }
           group
         `}
       >
-        {/* Logo */}
-        <div className="flex items-center h-12 px-3 border-b border-white/10 overflow-hidden">
-          <Vote className="w-6 h-6 text-purple-400 min-w-[1.5rem]" />
-          <span className="text-lg font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent ml-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            BlockVote
-          </span>
-        </div>
+        {/* Logo and Navigation Container */}
+        <div className={`
+          h-full flex flex-col
+          ${isMobileMenuOpen ? 'w-64' : 'w-0 lg:w-64'}
+        `}>
+          {/* Logo */}
+          <div className={`
+            h-16 border-b border-white/10 flex items-center px-4
+            ${!isMobileMenuOpen && 'lg:px-4'}
+          `}>
+            <div className={`
+              flex items-center gap-3
+              ${!isMobileMenuOpen && 'lg:min-w-[48px]'}
+            `}>
+              <Vote className={`
+                w-6 h-6 text-purple-400
+                ${!isMobileMenuOpen && 'hidden lg:block'}
+              `} />
+              <span className={`
+                text-lg font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent
+                whitespace-nowrap overflow-hidden transition-all duration-300
+                ${isMobileMenuOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 lg:group-hover:w-auto lg:group-hover:opacity-100'}
+              `}>
+                BlockVote
+              </span>
+            </div>
+            {isMobileMenuOpen && (
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="ml-auto p-2 rounded-lg hover:bg-white/5 lg:hidden"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
 
-        {/* Nav Items */}
-        <div className="py-4">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavigate(item.id)}
-              className={`
-                w-full flex items-center px-3 py-2 text-left
-                hover:bg-white/5 transition-colors relative
-                ${currentTab === item.id ? 'bg-white/10' : ''}
-                group/item
-              `}
-            >
-              <div className="flex items-center">
-                <item.icon size={16} className="text-purple-400 min-w-[1rem]" />
-                <span className="ml-2 text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          {/* Nav Items */}
+          <div className="py-4 overflow-hidden">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleNavigate(item.id)}
+                className={`
+                  w-full flex items-center gap-3 py-2.5 px-4 relative
+                  transition-colors
+                  ${currentTab === item.id ? 'bg-white/10' : 'hover:bg-white/5'}
+                  ${!isMobileMenuOpen && 'hidden lg:flex'}
+                `}
+              >
+                <div className="min-w-[20px] flex justify-center">
+                  <item.icon className="w-5 h-5 text-purple-400" />
+                </div>
+                <span className={`
+                  text-sm whitespace-nowrap overflow-hidden transition-all duration-300
+                  ${isMobileMenuOpen ? 'w-auto opacity-100' : 'w-0 lg:group-hover:w-auto lg:group-hover:opacity-100 opacity-0'}
+                `}>
                   {item.label}
                 </span>
-              </div>
-              {currentTab === item.id && (
-                <div className="absolute left-0 top-0 h-full w-0.5 bg-purple-400" />
-              )}
-            </button>
-          ))}
+                {currentTab === item.id && (
+                  <div className="absolute left-0 top-0 h-full w-0.5 bg-purple-400" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Mobile Overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[-1] lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
       </nav>
 
-      {/* Main Content - pushed right when sidebar expands */}
-      <main className="relative z-10 transition-all duration-300 lg:pl-12 lg:group-hover/nav:pl-48">
+      {/* Main Content */}
+      <main className={`
+        relative z-10 transition-all duration-300
+        ${isMobileMenuOpen ? 'pl-0' : 'pl-0 lg:pl-16'}
+      `}>
         {renderContent()}
       </main>
     </div>

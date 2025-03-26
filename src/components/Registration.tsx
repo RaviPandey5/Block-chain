@@ -6,9 +6,14 @@ import { sepolia } from 'wagmi/chains';
 import { useAadhaarVerification } from '../hooks/useAadhaarVerification';
 import Tesseract from 'tesseract.js';
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import type { WorkerOptions } from 'tesseract.js';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+
+type CustomWorkerOptions = Partial<WorkerOptions> & {
+  tessedit_char_whitelist?: string;
+};
 
 const Registration = () => {
   console.log('Rendering Registration component'); // Debug log
@@ -96,89 +101,195 @@ const Registration = () => {
     }
   };
 
+  const preprocessImage = async (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        // Calculate new dimensions while maintaining aspect ratio
+        let width = img.width;
+        let height = img.height;
+        const MAX_SIZE = 2400; // Increased for better resolution
+
+        if (width > height && width > MAX_SIZE) {
+          height = (height * MAX_SIZE) / width;
+          width = MAX_SIZE;
+        } else if (height > MAX_SIZE) {
+          width = (width * MAX_SIZE) / height;
+          height = MAX_SIZE;
+        }
+
+        // Set canvas dimensions
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw white background first
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw image
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Apply image processing
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        // Convert to grayscale and increase contrast
+        for (let i = 0; i < data.length; i += 4) {
+          // Convert to grayscale using luminance weights
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          // Increase contrast
+          const contrast = 1.5; // Increased contrast
+          const brightness = 30; // Slight brightness boost
+          const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+          const newValue = factor * (gray - 128) + 128 + brightness;
+
+          // Thresholding for better number recognition
+          const threshold = 180;
+          const finalValue = newValue > threshold ? 255 : 0;
+
+          data[i] = data[i + 1] = data[i + 2] = finalValue;
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        // Convert to blob with high quality
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to convert image to blob'));
+            }
+          },
+          'image/jpeg',
+          1.0 // Maximum quality
+        );
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const extractAadhaarWithGemini = async (file: File): Promise<string | null> => {
     try {
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      // First try with Tesseract
+      const processedBlob = await preprocessImage(file);
+      const processedFile = new File([processedBlob], file.name, { type: 'image/jpeg' });
 
-      // Convert the file to base64
+      const tesseractResult = await Tesseract.recognize(
+        processedFile,
+        'eng',
+        {
+          logger: () => {},
+          tessedit_char_whitelist: '0123456789 ',
+          tessedit_pageseg_mode: '6', // Assume uniform text block
+          preserve_interword_spaces: '1',
+          tessedit_ocr_engine_mode: '2' // Use Legacy + LSTM
+        } as CustomWorkerOptions
+      );
+
+      // Try to find Aadhaar number in Tesseract result
+      const aadhaarRegex = /\b[2-9]{1}[0-9]{3}\s*[0-9]{4}\s*[0-9]{4}\b/g;
+      const matches = tesseractResult.data.text.match(aadhaarRegex);
+      
+      if (matches && matches.length > 0) {
+        // Clean and validate the number
+        const cleanNumber = matches[0].replace(/\s/g, '');
+        if (/^[2-9][0-9]{11}$/.test(cleanNumber)) {
+          return cleanNumber;
+        }
+      }
+
+      // If Tesseract fails, try with Gemini
       const base64Image = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           if (reader.result) {
             const base64 = reader.result as string;
-            resolve(base64.split(',')[1]); // Remove the data URL prefix
+            resolve(base64.split(',')[1]);
           } else {
             reject(new Error('Failed to read file'));
           }
         };
         reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(processedFile);
       });
 
-      // Create a more specific prompt for better accuracy
-      const prompt = `Please analyze this Aadhaar card image and extract ONLY the 12-digit Aadhaar number.
-      - The number should be in format: XXXX XXXX XXXX
-      - Return only the digits, no other text
-      - Ensure the number starts with a digit between 2-9
-      - The number in the image is clearly visible`;
+      const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+      const prompt = `Extract the 12-digit Aadhaar number from this image. The number should be in format XXXX XXXX XXXX. Return only the digits, no other text. The number should start with a digit between 2-9. Focus on clear, high-contrast areas of the image. The number is usually printed in a larger font size compared to other text.`;
 
-      // Generate content with safety settings
       const result = await model.generateContent([
         prompt,
         {
           inlineData: {
             data: base64Image,
-            mimeType: file.type
+            mimeType: 'image/jpeg'
           }
         }
       ]);
 
       const response = await result.response;
-      const text = response.text().trim();
-
-      // Clean up the extracted number (remove spaces and any non-digit characters)
-      const cleanNumber = text.replace(/[^0-9]/g, '');
-
-      // Validate that we have a 12-digit number starting with 2-9
-      if (cleanNumber.length === 12 && /^[2-9]\d{11}$/.test(cleanNumber)) {
-        console.log('Successfully extracted Aadhaar number');
-        return cleanNumber;
+      const text = response.text();
+      
+      // Clean and validate Gemini result
+      const cleanedText = text.replace(/[^0-9]/g, '');
+      if (/^[2-9][0-9]{11}$/.test(cleanedText)) {
+        return cleanedText;
       }
 
-      console.error('Invalid number format:', { cleanNumber, length: cleanNumber.length });
-      throw new Error('Could not find a valid Aadhaar number in the image');
-    } catch (error) {
-      console.error('Error extracting Aadhaar number:', error);
-      if (error instanceof Error && error.message.includes('404')) {
-        throw new Error('The OCR service is temporarily unavailable. Please try entering the number manually.');
-      }
-      throw new Error('Could not find a valid Aadhaar number in the image. Please ensure the number is clearly visible or try entering it manually.');
+      throw new Error('Could not extract a valid Aadhaar number. Please ensure the image is clear and well-lit, or try entering the number manually.');
+    } catch (err) {
+      console.error('Extraction error:', err);
+      throw new Error('Could not extract Aadhaar number. Please ensure the image is clear and well-lit, or try entering the number manually.');
     }
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setIsExtracting(true);
-      setError(null);
-      
-      try {
-        // Try extracting with Gemini first
-        const extractedNumber = await extractAadhaarWithGemini(file);
-        
-        if (!extractedNumber) {
-          throw new Error('Could not find a valid Aadhaar number in the image. Please ensure the number is clearly visible or try entering it manually.');
-        }
+    if (!file) return;
 
+    // Validate file size
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      setError(new Error('File size too large. Please select an image under 5MB.'));
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      setError(new Error('Invalid file type. Please select a JPG, JPEG or PNG image.'));
+      return;
+    }
+
+    setSelectedFile(file);
+    setIsExtracting(true);
+    setError(null);
+    
+    try {
+      const extractedNumber = await extractAadhaarWithGemini(file);
+      if (extractedNumber) {
         setExtractedAadhaar(extractedNumber);
-      } catch (error) {
-        console.error('Extraction Error:', error);
-        setError(error instanceof Error ? error : new Error('Failed to extract Aadhaar number'));
-      } finally {
-        setIsExtracting(false);
+      } else {
+        throw new Error('Could not extract a valid Aadhaar number. Please try again or enter manually.');
       }
+    } catch (err: any) {
+      console.error('Extraction Error:', err);
+      setError(new Error(err?.message || 'Failed to extract Aadhaar number'));
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -404,7 +515,7 @@ const Registration = () => {
                           <input
                             type="file"
                             className="hidden"
-                            accept=".jpg,.jpeg,.png,.pdf"
+                            accept="image/jpeg,image/jpg,image/png"
                             onChange={handleFileSelect}
                             disabled={!isConnected || isLoading || isExtracting}
                           />
