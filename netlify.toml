@@ -1,6 +1,10 @@
 [build]
-  command = "npm run build"
+  command = "npm install --platform=linux --arch=x64 @rollup/rollup-linux-x64-gnu && npm run build"
   publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "9"
 
 # Handle SPA routing (for React Router)
 [[redirects]]
