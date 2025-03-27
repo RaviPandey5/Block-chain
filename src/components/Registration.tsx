@@ -674,22 +674,22 @@ const Registration = () => {
                   Verification Status
                 </h2>
                 <div className="p-6 bg-white/5 border border-white/10 rounded-lg space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
                     <span className="text-gray-400">Status:</span>
                     <span className="text-green-400 flex items-center gap-2">
                       <CheckCircle size={16} />
                       Verified
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
                     <span className="text-gray-400">Verification Date:</span>
-                    <span className="text-white">{formatTimestamp(verificationDetails.timestamp)}</span>
+                    <span className="text-white text-sm sm:text-base">{formatTimestamp(verificationDetails.timestamp)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
                     <span className="text-gray-400">Wallet Address:</span>
-                    <span className="text-purple-400 font-mono">{formatAddress(address)}</span>
+                    <span className="text-purple-400 font-mono text-sm sm:text-base overflow-hidden text-ellipsis">{formatAddress(address)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
                     <span className="text-gray-400">Aadhaar Status:</span>
                     <span className="text-white flex items-center gap-2">
                       <Shield size={16} className="text-purple-400" />

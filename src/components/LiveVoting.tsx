@@ -169,10 +169,28 @@ const LiveVoting = () => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const formatTimestamp = (timestamp: number) => {
+  const formatTimestamp = (timestamp: number, format?: 'full' | 'compact'): string => {
     if (!timestamp) return 'Unknown';
     const date = new Date(timestamp * 1000);
-    return date.toLocaleString();
+    
+    // For "Last Vote" in the stats area - use full format
+    if (format === 'full') {
+      return date.toLocaleString(undefined, { 
+        month: 'numeric', 
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit'
+      });
+    }
+    
+    // For live feed - use compact format
+    return date.toLocaleString(undefined, { 
+      month: 'numeric', 
+      day: 'numeric',
+      hour: '2-digit', 
+      minute: '2-digit'
+    });
   };
 
   // Find the leading candidate
@@ -266,7 +284,7 @@ const LiveVoting = () => {
                 <p className="text-sm text-gray-400">Last Vote</p>
                 <h3 className="text-lg font-bold">
                   {votingStats.lastVote 
-                    ? formatTimestamp(votingStats.lastVote.timestamp)
+                    ? formatTimestamp(votingStats.lastVote.timestamp, 'full')
                     : 'No votes yet'}
                 </h3>
               </div>
@@ -356,22 +374,22 @@ const LiveVoting = () => {
                   return (
                     <div 
                       key={`${vote.voter}-${vote.timestamp}-${index}`}
-                      className="p-4 bg-white/5 border border-white/10 rounded-lg flex items-center justify-between"
+                      className="p-4 bg-white/5 border border-white/10 rounded-lg"
                     >
-                      <div className="flex items-center gap-3">
-                        <User className="text-purple-400" />
-                        <div>
-                          <p className="font-mono text-sm text-purple-400">
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <div className="flex items-center gap-2">
+                          <User className="text-purple-400 shrink-0 w-4 h-4" />
+                          <p className="font-mono text-sm text-purple-400 overflow-hidden text-ellipsis">
                             {formatAddress(vote.voter)}
                           </p>
-                          <p className="text-sm text-gray-400">
-                            voted for {candidate?.name || `Candidate #${vote.candidateId}`}
-                          </p>
                         </div>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatTimestamp(vote.timestamp)}
+                        </span>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        {formatTimestamp(vote.timestamp)}
-                      </span>
+                      <p className="text-xs text-gray-400 pl-6">
+                        voted for {candidate?.name || `Candidate #${vote.candidateId}`}
+                      </p>
                     </div>
                   );
                 })
@@ -429,7 +447,12 @@ const LiveVoting = () => {
                           #{block.number}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {new Date(block.timestamp * 1000).toLocaleTimeString()}
+                          {new Date(block.timestamp * 1000).toLocaleString(undefined, { 
+                            month: 'numeric',
+                            day: 'numeric',
+                            hour: '2-digit', 
+                            minute: '2-digit'
+                          })}
                         </p>
                       </div>
                     </div>

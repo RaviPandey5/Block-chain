@@ -13,7 +13,12 @@ export function formatDate(date: string | number | Date): string {
  */
 export function formatRelativeDate(date: string | number | Date): string {
   const dateObj = new Date(date);
-  return formatDistance(dateObj, new Date(), { addSuffix: true });
+  // Get the formatted string from date-fns
+  const formatted = formatDistance(dateObj, new Date(), { addSuffix: true });
+  
+  // Replace spaces between numbers and units with non-breaking spaces
+  // This prevents awkward line breaks on mobile (e.g. "3" on one line and "days ago" on the next)
+  return formatted.replace(/(\d+)\s+([a-z]+)/gi, '$1\u00A0$2');
 }
 
 /**
