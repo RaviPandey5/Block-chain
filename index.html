@@ -10,10 +10,274 @@
     <!-- Preconnect to speed up API connections -->
     <link rel="preconnect" href="https://crbtcmtikdjolukveauy.supabase.co">
     <link rel="preconnect" href="https://sepolia.infura.io">
+    <style>
+      #metamask-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(17, 6, 29, 0.75);
+        backdrop-filter: blur(8px);
+        z-index: 9998;
+        display: none;
+      }
+      
+      #metamask-error {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        max-width: 800px;
+        width: 90%;
+        padding: 2rem;
+        background: linear-gradient(to bottom right, rgba(91, 33, 182, 0.6), rgba(30, 10, 60, 0.9));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 16px;
+        box-shadow: 
+          0 20px 25px -5px rgba(0, 0, 0, 0.3),
+          0 10px 10px -5px rgba(0, 0, 0, 0.2),
+          0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+          0 0 40px rgba(91, 33, 182, 0.4);
+        color: white;
+        font-family: system-ui, sans-serif;
+        z-index: 9999;
+        display: none;
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        overflow-y: auto;
+        max-height: 90vh;
+      }
+      
+      #metamask-error h2 {
+        background: linear-gradient(to right, #a78bfa, #93c5fd);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        font-size: 1.75rem;
+        margin-top: 0;
+        margin-bottom: 1rem;
+      }
+      
+      #metamask-error p {
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.6;
+        margin-bottom: 1.25rem;
+      }
+      
+      #metamask-error .steps {
+        background-color: rgba(0, 0, 0, 0.2);
+        padding: 1.25rem;
+        border-radius: 12px;
+        margin-top: 1.25rem;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+      }
+      
+      #metamask-error .steps p {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+      }
+      
+      #metamask-error ol {
+        padding-left: 1.5rem;
+        margin-bottom: 0.75rem;
+        color: rgba(255, 255, 255, 0.9);
+      }
+      
+      #metamask-error li {
+        margin-bottom: 0.75rem;
+        line-height: 1.5;
+      }
+      
+      #metamask-error a {
+        color: #93c5fd;
+        text-decoration: underline;
+        font-weight: 500;
+        transition: color 0.2s;
+      }
+      
+      #metamask-error a:hover {
+        color: #bfdbfe;
+      }
+      
+      #metamask-error .button-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 1.5rem;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      
+      #metamask-error button {
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+        white-space: nowrap;
+        min-width: 160px;
+      }
+      
+      #metamask-error button.primary {
+        background: linear-gradient(to right, #6d28d9, #8b5cf6);
+        color: white;
+        box-shadow: 0 4px 6px rgba(109, 40, 217, 0.25);
+      }
+      
+      #metamask-error button.secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      #metamask-error button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+      }
+      
+      #metamask-error button:active {
+        transform: translateY(0);
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translate(-50%, calc(-50% - 20px)); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
+      }
+      
+      @media (max-width: 640px) {
+        #metamask-error {
+          padding: 1.5rem;
+          width: 95%;
+          max-height: 85vh;
+        }
+        
+        #metamask-error h2 {
+          font-size: 1.5rem;
+        }
+        
+        #metamask-error .button-container {
+          flex-direction: column;
+        }
+        
+        #metamask-error button {
+          width: 100%;
+        }
+      }
+      
+      /* Content layout for wider screens */
+      @media (min-width: 768px) {
+        .content-columns {
+          display: flex;
+          gap: 1.5rem;
+        }
+        
+        .content-columns > div {
+          flex: 1;
+        }
+
+        /* Make both columns equal height */
+        .content-columns .steps {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          min-height: 320px; /* Ensure minimum height for both columns */
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- MetaMask error overlay -->
+    <div id="metamask-overlay"></div>
+    
+    <!-- MetaMask error modal -->
+    <div id="metamask-error">
+      <h2>MetaMask Required</h2>
+      <p>This application requires MetaMask to function properly. MetaMask is a browser extension that allows you to securely interact with blockchain applications.</p>
+      
+      <div class="content-columns">
+        <div>
+          <div class="steps">
+            <p><strong>✅ Required Steps:</strong></p>
+            <ol>
+              <li><strong>Install MetaMask:</strong> Download and install the <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer">MetaMask extension</a> for your browser</li>
+              <li><strong>Create a Wallet:</strong> Set up a new wallet or import an existing one</li>
+              <li><strong>Connect to Sepolia:</strong>
+                <ul style="margin-top: 0.5rem; padding-left: 1.5rem; color: rgba(255, 255, 255, 0.8);">
+                  <li>Use the "Add Sepolia Network" button in the right panel</li>
+                  <li>This opens Chainlist - connect your wallet and click "Add to MetaMask"</li>
+                  <li>The network will be added automatically with the correct settings</li>
+                </ul>
+              </li>
+              <li><strong>Return to app:</strong> Refresh this page and try connecting again</li>
+            </ol>
+
+            <div style="margin-top: auto; padding-top: 1rem;">
+              <p><strong>💡 Quick Tip:</strong> Make sure your MetaMask is unlocked before clicking the "Connect Wallet" button in the app.</p>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <div class="steps">
+            <p><strong>🔍 Add Sepolia Network Automatically:</strong></p>
+            <div style="background: rgba(0,0,0,0.3); padding: 1.25rem; margin: 0.5rem 0; border-radius: 8px; text-align: center;">
+              <p style="margin-bottom: 1rem;"><strong>Add Sepolia with one click:</strong></p>
+              
+              <a href="https://chainlist.org/?search=Sepolia&testnets=true" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: linear-gradient(to right, #8b5cf6, #6366f1); padding: 0.75rem 1.5rem; border-radius: 8px; color: white; text-decoration: none; font-weight: 500; transition: all 0.2s; box-shadow: 0 4px 6px rgba(109, 40, 217, 0.25);">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+                  Add Sepolia Network
+                </div>
+              </a>
+              
+              <p style="margin-top: 1rem; font-size: 0.9rem; color: rgba(255, 255, 255, 0.8);">
+                This will open Chainlist where you can add Sepolia with one click after connecting your wallet.
+              </p>
+            </div>
+            
+            <p style="margin-top: 1.5rem;"><strong>💰 Get Test ETH:</strong></p>
+            <ul style="padding-left: 1.5rem; color: rgba(255, 255, 255, 0.9);">
+              <li>Visit the <a href="https://cloud.google.com/application/web3/faucet/ethereum/sepolia" target="_blank" rel="noopener noreferrer">Google Cloud Web3 Faucet</a> for reliable test ETH</li>
+              <li>Connect your wallet or paste your wallet address</li>
+              <li>Complete any verification steps required</li>
+              <li>Wait for test ETH to arrive (usually within minutes)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(91, 33, 182, 0.2); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+        <p style="margin: 0; font-size: 0.9rem;"><strong>Note:</strong> Test ETH has no real value and is only used for testing purposes on the Sepolia network.</p>
+      </div>
+      
+      <div class="button-container">
+        <button class="primary" onclick="window.open('https://metamask.io/download/', '_blank')">Install MetaMask</button>
+        <button class="primary" onclick="window.open('https://chainlist.org/?search=Sepolia&testnets=true', '_blank')" style="background: linear-gradient(to right, #8b5cf6, #6366f1);">Add Sepolia Network</button>
+        <button class="primary" onclick="window.open('https://cloud.google.com/application/web3/faucet/ethereum/sepolia', '_blank')" style="background: linear-gradient(to right, #4f46e5, #6366f1);">Get Test ETH</button>
+        <button class="secondary" onclick="window.location.reload()">Refresh Page</button>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- MetaMask detection script -->
+    <script>
+      // Check for MetaMask or Ethereum provider
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+          const hasMetaMask = typeof window.ethereum !== 'undefined';
+          if (!hasMetaMask) {
+            document.getElementById('metamask-overlay').style.display = 'block';
+            document.getElementById('metamask-error').style.display = 'block';
+            // Prevent body scrolling when modal is open
+            document.body.style.overflow = 'hidden';
+          }
+        }, 1000);
+      });
+    </script>
+    
     <!-- Error handling for white screen -->
     <script>
       // Check if the app mounted properly after 3 seconds

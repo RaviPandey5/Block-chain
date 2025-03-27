@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Home, Vote, UserCheck, BarChart3, Search, 
-  Brain, Users, Wallet, Menu, X, Shield, FileSearch 
+  Brain, Users, Wallet, Menu, X, Shield, FileSearch, LineChart 
 } from 'lucide-react';
 import { SparklesCore } from './components/ui/sparkles';
 import { WagmiConfig } from 'wagmi';
@@ -83,7 +83,7 @@ function AppContent() {
     { id: 'home', label: 'Home', icon: Home },
     { id: 'registration', label: 'Registration', icon: UserCheck },
     { id: 'voting', label: 'Voting Dashboard', icon: Vote },
-    { id: 'live', label: 'Live Voting', icon: BarChart3 },
+    { id: 'live', label: 'Live Voting', icon: LineChart },
     { id: 'results', label: 'Results', icon: BarChart3 },
     { id: 'audit', label: 'Audit Hub', icon: Search },
     { id: 'insights', label: 'Election Insights', icon: Brain },
@@ -113,10 +113,10 @@ function AppContent() {
 
       {/* Mobile Menu Button - only visible on mobile */}
       <button 
-        className="fixed top-4 right-4 z-50 p-3 rounded-lg bg-black/20 backdrop-blur-sm border border-white/10 lg:hidden hover:bg-white/5 transition-all"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className={`fixed top-4 right-4 z-50 p-3 rounded-lg bg-black/20 backdrop-blur-sm border border-white/10 lg:hidden hover:bg-white/5 transition-all ${isMobileMenuOpen ? 'hidden' : 'block'}`}
+        onClick={() => setIsMobileMenuOpen(true)}
       >
-        {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        <Menu className="w-5 h-5" />
       </button>
 
       {/* Navigation Sidebar */}
@@ -155,7 +155,7 @@ function AppContent() {
             {isMobileMenuOpen && (
               <button 
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="ml-auto p-2 rounded-lg hover:bg-white/5 lg:hidden"
+                className="ml-auto p-2 rounded-lg hover:bg-white/5"
               >
                 <X className="w-5 h-5" />
               </button>

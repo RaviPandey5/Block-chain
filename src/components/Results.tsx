@@ -51,14 +51,14 @@ const Results = () => {
   return (
     <div className="min-h-screen p-6 lg:p-12">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+          <h1 className="text-3xl sm:text-4xl font-bold">
             <span className="gradient-heading">Election Results</span>
           </h1>
-          <div className="flex gap-2">
+          <div className="flex gap-2 self-start">
             <button
               onClick={() => setSelectedView('overview')}
-              className={`px-4 py-2 rounded-lg transition-all ${
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm sm:text-base ${
                 selectedView === 'overview'
                   ? 'bg-purple-400/20 text-purple-400'
                   : 'hover:bg-white/5'
@@ -68,7 +68,7 @@ const Results = () => {
             </button>
             <button
               onClick={() => setSelectedView('detailed')}
-              className={`px-4 py-2 rounded-lg transition-all ${
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm sm:text-base ${
                 selectedView === 'detailed'
                   ? 'bg-purple-400/20 text-purple-400'
                   : 'hover:bg-white/5'

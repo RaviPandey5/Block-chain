@@ -499,7 +499,7 @@ const Community = () => {
 
                   {/* Comment input - Fixed at bottom */}
                   <div className="shrink-0 border-t border-white/10 bg-gradient-to-r from-blue-900/90 to-indigo-900/90 p-4">
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 max-w-full">
                       <input
                         type="text"
                         placeholder="Write a comment..."
@@ -511,15 +511,16 @@ const Community = () => {
                             handleSubmitComment();
                           }
                         }}
-                        className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder:text-blue-200/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder:text-blue-200/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
                       />
                       <button
                         onClick={handleSubmitComment}
                         disabled={!newComment.trim()}
-                        className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg px-4 py-2 hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+                        className="shrink-0 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg p-2 sm:px-4 sm:py-2 hover:opacity-90 disabled:opacity-50 flex items-center gap-2 min-w-[40px] justify-center"
+                        aria-label="Send message"
                       >
-                        <Send className="w-4 h-4" />
-                        <span>Send</span>
+                        <Send className="w-5 h-5" />
+                        <span className="hidden sm:inline">Send</span>
                       </button>
                     </div>
                   </div>

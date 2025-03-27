@@ -444,9 +444,38 @@ const Registration = () => {
               </button>
               )}
               {(error || connectError) && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
-                  {(error instanceof Error ? error.message : 'An error occurred') || 
-                   (connectError instanceof Error ? connectError.message : 'Connection error occurred')}
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 space-y-2">
+                  <div className="font-medium">
+                    {error instanceof Error ? error.message : connectError instanceof Error ? connectError.message : 'Connection error occurred'}
+                  </div>
+                  
+                  {(() => {
+                    // Helper function to check if error is related to MetaMask
+                    const isMetaMaskError = () => {
+                      const errorMsg = error instanceof Error ? error.message : '';
+                      const connectErrorMsg = connectError instanceof Error ? connectError.message : '';
+                      
+                      return errorMsg.includes('No Ethereum provider') || 
+                        errorMsg.toLowerCase().includes('metamask') ||
+                        connectErrorMsg.includes('No Ethereum provider') ||
+                        connectErrorMsg.toLowerCase().includes('metamask');
+                    };
+                    
+                    if (isMetaMaskError()) {
+                      return (
+                        <div className="text-sm space-y-2 bg-black/30 p-3 rounded border border-red-500/20">
+                          <p className="font-medium">You need to install MetaMask to use this application:</p>
+                          <ol className="list-decimal list-inside space-y-1">
+                            <li>Install the <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">MetaMask extension</a> for your browser</li>
+                            <li>Create a wallet or import an existing one</li>
+                            <li>Connect to the Sepolia test network</li>
+                            <li>Refresh this page and try connecting again</li>
+                          </ol>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               )}
               {isWrongNetwork && (
